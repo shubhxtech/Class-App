@@ -1,7 +1,9 @@
 [versions]
 accompanistSystemuicontroller = "0.32.0"
-agp = "8.7.1"
+agp = "8.7.3"
 googleWebrtc = "1.0.32006"
+gradle = "3.4.3"
+gradleVersion = "7.0.0"
 json = "20210307"
 kotlin = "2.0.0"
 coreKtx = "1.10.1"
@@ -20,6 +22,8 @@ socketIoClient = "2.1.0"
 accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-systemuicontroller", version.ref = "accompanistSystemuicontroller" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 google-webrtc = { module = "org.webrtc:google-webrtc", version.ref = "googleWebrtc" }
+gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle" }
+gradle-v700 = { module = "com.android.tools.build:gradle", version.ref = "gradleVersion" }
 json = { module = "org.json:json", version.ref = "json" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
