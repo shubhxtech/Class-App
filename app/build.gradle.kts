@@ -60,4 +60,11 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.accompanist.systemuicontroller)
+        // Material icons core
+    implementation ("androidx.compose.material:material-icons-core:1.5.0")
+
+        // Material icons extended (includes filled, outlined, rounded, etc.)
+    implementation ("androidx.compose.material:material-icons-extended:1.5.0")
+
+
 }

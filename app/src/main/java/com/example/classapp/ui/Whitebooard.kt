@@ -1,4 +1,3 @@
-import android.Manifest
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -7,140 +6,51 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountBox
-import androidx.compose.material.icons.rounded.Call
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.classapp.WhiteboardApp
-import com.example.classapp.WhiteboardViewModel
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun WhiteboardWithAudio(
-    whiteboardViewModel: WhiteboardViewModel,
-    audioViewModel: AudioClientViewModel,
-) {
-    var showControlPanel by remember { mutableStateOf(false) }
-    var showIpDialog by remember { mutableStateOf(false) }
-    var ipAddress by remember { mutableStateOf("192.168.0.109") }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Main whiteboard content
-        WhiteboardApp(whiteboardViewModel)
-
-        // FAB for showing/hiding control panel
-        FloatingActionButton(
-            onClick = { showControlPanel = !showControlPanel },
-            modifier = Modifier
-                .padding(16.dp)
-                .align(Alignment.BottomEnd)
-        ) {
-            Icon(
-                imageVector = if (showControlPanel) Icons.Rounded.Close else Icons.Rounded.Call,
-                contentDescription = if (showControlPanel) "Hide Controls" else "Show Controls"
-            )
-        }
-
-        // Animated Control Panel
-        AnimatedVisibility(
-            visible = showControlPanel,
-            enter = slideInHorizontally(initialOffsetX = { it * 2 }) + fadeIn(),
-            exit = slideOutHorizontally(targetOffsetX = { it * 2 }) + fadeOut(),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 88.dp, end = 16.dp)
-        ) {
-            AudioControlPanel(
-                viewModel = audioViewModel,
-                ipAddress = ipAddress,
-                onIpDialogRequest = { showIpDialog = true }
-            )
-        }
-
-        // IP Input Dialog
-        if (showIpDialog) {
-            AlertDialog(
-                onDismissRequest = { showIpDialog = false },
-                title = { Text("Enter Server IP") },
-                text = {
-                    OutlinedTextField(
-                        value = ipAddress,
-                        onValueChange = { ipAddress = it },
-                        label = { Text("IP Address") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = { showIpDialog = false }) {
-                        Text("Confirm")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showIpDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
-            )
-        }
-    }
-}
 
 @Composable
-private fun AudioControlPanel(
+fun AudioControlPanel(
     viewModel: AudioClientViewModel,
-    ipAddress: String,
-    onIpDialogRequest: () -> Unit,
-    current: Context = LocalContext.current
+    onIpDialogRequest: (() -> Unit)? = null
 ) {
+    // Get IP from the ViewModel
+    val ipAddress = viewModel.serverIp
     val connectionState by viewModel.connectionState.collectAsState()
     val errorState by viewModel.errorState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
@@ -179,11 +89,15 @@ private fun AudioControlPanel(
                         style = MaterialTheme.typography.titleSmall
                     )
                 }
-                IconButton(onClick = onIpDialogRequest) {
-                    Icon(
-                        imageVector = Icons.Rounded.Edit,
-                        contentDescription = "Edit IP"
-                    )
+
+                // Only show edit button if handler is provided
+                if (onIpDialogRequest != null) {
+                    IconButton(onClick = onIpDialogRequest) {
+                        Icon(
+                            imageVector = Icons.Rounded.Edit,
+                            contentDescription = "Edit IP"
+                        )
+                    }
                 }
             }
 
@@ -227,25 +141,10 @@ private fun AudioControlPanel(
                     }
                 }
             }
-
+            val current = LocalContext.current
             // Control Buttons
             when (connectionState) {
                 is AudioClientViewModel.ConnectionState.Disconnected -> {
-//                    FilledTonalButton(
-//                        onClick = {
-//                            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-//                        },
-//                        modifier = Modifier.fillMaxWidth()
-//                    ) {
-//                        Icon(
-//                            imageVector = Icons.Rounded.Call,
-//                            contentDescription = "Microphone",
-//                            modifier = Modifier.size(18.dp)
-//                        )
-//                        Spacer(Modifier.width(4.dp))
-//                        Text("Request Permission")
-//                    }
-
                     Button(
                         onClick = {
                             coroutineScope.launch {
@@ -323,7 +222,7 @@ private fun AudioControlPanel(
 }
 
 @Composable
-private fun StatusIndicator(state: AudioClientViewModel.ConnectionState) {
+fun StatusIndicator(state: AudioClientViewModel.ConnectionState) {
     val color = when (state) {
         is AudioClientViewModel.ConnectionState.Disconnected -> MaterialTheme.colorScheme.error
         is AudioClientViewModel.ConnectionState.Connected -> MaterialTheme.colorScheme.primary

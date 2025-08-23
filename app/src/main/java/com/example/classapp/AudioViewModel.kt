@@ -19,7 +19,7 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.net.Socket
 
-class AudioClientViewModel : ViewModel() {
+class AudioClientViewModel(val serverIp: String) : ViewModel() {
     private val SAMPLE_RATE = 22050
     private val CHANNEL_CONFIG_RECORD = AudioFormat.CHANNEL_IN_MONO
     private val CHANNEL_CONFIG_PLAY = AudioFormat.CHANNEL_OUT_MONO
