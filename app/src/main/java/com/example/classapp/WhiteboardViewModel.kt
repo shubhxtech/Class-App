@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.socket.client.IO
 import io.socket.client.Socket
+import io.socket.emitter.Emitter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,10 +21,8 @@ import java.io.FileOutputStream
 import java.net.URISyntaxException
 import java.util.UUID
 
-
-
 class WhiteboardViewModel(val serverIp: String) : ViewModel() {
-    var socket: Socket? = null
+    private var socket: Socket? = null
 
     // StateFlows for UI state management
     private val _isConnected = MutableStateFlow(false)
@@ -90,10 +89,8 @@ class WhiteboardViewModel(val serverIp: String) : ViewModel() {
 
             Log.d(TAG, "Attempting to connect to socket...")
             socket = IO.socket("http://${this.url}:5000", options)
-
             setupSocketListeners()
             socket?.connect()
-            Log.d(TAG, "Socket connect() called")
 
         } catch (e: URISyntaxException) {
             Log.e(TAG, "Error creating socket", e)
@@ -105,33 +102,33 @@ class WhiteboardViewModel(val serverIp: String) : ViewModel() {
     private fun setupSocketListeners() {
         socket?.apply {
             // Connection events
-            on(Socket.EVENT_CONNECT) {
+            on(Socket.EVENT_CONNECT, Emitter.Listener {
                 Log.d(TAG, "Socket connected successfully")
                 viewModelScope.launch {
                     _isConnected.value = true
                 }
                 // Register viewport size after connection
                 sendViewportSize()
-            }
+            })
 
-            on(Socket.EVENT_CONNECT_ERROR) { args ->
+            on(Socket.EVENT_CONNECT_ERROR, Emitter.Listener { args ->
                 val error = args.firstOrNull()
                 viewModelScope.launch {
                     _isConnected.value = false
                     Log.e(TAG, "Socket connection error: $error", Exception(error?.toString()))
                 }
-            }
+            })
 
-            on(Socket.EVENT_DISCONNECT) {
+            on(Socket.EVENT_DISCONNECT, Emitter.Listener {
                 Log.d(TAG, "Socket disconnected")
                 viewModelScope.launch {
                     _isConnected.value = false
                     _canEdit.value = false
                 }
-            }
+            })
 
             // Connection status updates from server
-            on("connection_status") { args ->
+            on("connection_status", Emitter.Listener { args ->
                 try {
                     if (args.isNotEmpty() && args[0] is JSONObject) {
                         val data = args[0] as JSONObject
@@ -148,10 +145,10 @@ class WhiteboardViewModel(val serverIp: String) : ViewModel() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Error processing connection status", e)
                 }
-            }
+            })
 
             // PDF handling
-            on("new_pdf") { args ->
+            on("new_pdf", Emitter.Listener { args ->
                 Log.d(TAG, "Received new PDF event")
                 try {
                     if (args.isNotEmpty() && args[0] is JSONObject) {
@@ -176,10 +173,10 @@ class WhiteboardViewModel(val serverIp: String) : ViewModel() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Error processing PDF data", e)
                 }
-            }
+            })
 
             // Page change events
-            on("change_page") { args ->
+            on("change_page", Emitter.Listener { args ->
                 try {
                     if (args.isNotEmpty() && args[0] is JSONObject) {
                         val data = args[0] as JSONObject
@@ -196,18 +193,18 @@ class WhiteboardViewModel(val serverIp: String) : ViewModel() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Error processing page change", e)
                 }
-            }
+            })
 
             // Handle clear annotations event
-            on("clear_annotations") {
+            on("clear_annotations", Emitter.Listener {
                 viewModelScope.launch {
                     // You'll need to implement this based on your drawing mechanism
                     Log.d(TAG, "Received clear annotations command")
                 }
-            }
+            })
 
             // Legacy allow_student event
-            on("allow_student") { args ->
+            on("allow_student", Emitter.Listener { args ->
                 if (args.isNotEmpty() && args[0] is JSONObject) {
                     val data = args[0] as JSONObject
                     val allowedSid = data.optString("allowed_sid", "")
@@ -222,17 +219,17 @@ class WhiteboardViewModel(val serverIp: String) : ViewModel() {
                         Log.d(TAG, "I am NOT allowed to draw.")
                     }
                 }
-            }
+            })
 
             // Handle coordinate updates from other clients
-            on("coordinate_update") { args ->
+            on("coordinate_update", Emitter.Listener { args ->
                 try {
                     // Process incoming coordinates from other clients if needed
                     Log.d(TAG, "Received coordinate update from another client")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error processing coordinate update", e)
                 }
-            }
+            })
         }
     }
 
@@ -348,13 +345,11 @@ class WhiteboardViewModel(val serverIp: String) : ViewModel() {
             val data = JSONObject()
             data.put("question", question)
             socket?.emit("request_edit_permission", data)
-//            socket?.emit("request_edit_permission", mapOf("question" to question))
             Log.d(TAG, "Edit permission requested with question: $question")
         } catch (e: Exception) {
             Log.e(TAG, "Error requesting edit permission", e)
         }
     }
-
 
     fun changePage(pageNumber: Int) {
         if (!_isConnected.value) return
